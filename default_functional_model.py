@@ -22,6 +22,7 @@ plt.plot(t, x_train)
 plt.plot(t, y_train)
 plt.title("Input and Output Signal")
 plt.legend(["Input", "Output"])
+plt.show()
 
 #####################
 # TRANSFER FUNCTION #
@@ -31,10 +32,11 @@ plt.plot(x_train, y_train)
 plt.title("Transfer Function")
 plt.axhline(y=0, color="k")
 plt.axvline(x=0, color="k")
+plt.show()
 ###########################################
 # CREATE FUNCTIONAL MODEL WITH TENSORFLOW #
 ###########################################
-# %%
+
 input = tf.keras.Input(shape=(1,), name="Input")
 dense1 = tf.keras.layers.Dense(64, activation="relu", name="Dense1")  # first layer
 x = dense1(input)
@@ -51,7 +53,7 @@ model.compile(
     metrics=["accuracy"],
 )
 
-history = model.fit(x_train, y_train, batch_size=1, epochs=5)
+history = model.fit(x_train, y_train, batch_size=1, epochs=10)
 model_out = model.predict(x_train)
 plt.plot(t, x_train)
 plt.plot(t, y_train)

@@ -11,15 +11,15 @@ import matplotlib.pyplot as plt
 Fs = 1000
 N = 1000
 t = np.linspace(0, 10, Fs)
-x = np.sin(t)
-y = np.tanh(4 * x)
+x_train = np.sin(t)
+y_train = np.tanh(40 * x_train)
 
 ############################
 # INPUT AND OUTPUT SIGNALS #
 ############################
 plt.figure()
-plt.plot(t, x)
-plt.plot(t, y)
+plt.plot(t, x_train)
+plt.plot(t, y_train)
 plt.title("Input and Output Signal")
 plt.legend(["Input", "Output"])
 
@@ -27,24 +27,35 @@ plt.legend(["Input", "Output"])
 # TRANSFER FUNCTION #
 #####################
 plt.figure()
-plt.plot(x, y)
+plt.plot(x_train, y_train)
 plt.title("Transfer Function")
 plt.axhline(y=0, color="k")
 plt.axvline(x=0, color="k")
-#%%
 ###########################################
 # CREATE FUNCTIONAL MODEL WITH TENSORFLOW #
 ###########################################
-
-input = tf.keras.Input(shape=(1,))
-dense1 = tf.keras.layers.Dense(64, activation="relu")  # first layer
+# %%
+input = tf.keras.Input(shape=(1,), name="Input")
+dense1 = tf.keras.layers.Dense(64, activation="relu", name="Dense1")  # first layer
 x = dense1(input)
-x = tf.keras.layers.Dense(64, activation="relu")(x)  # second layer
-output = tf.keras.layers.Dense(1)(x)  # output layer
+x = tf.keras.layers.Dense(64, activation="relu", name="Dense2")(x)  # second layer
+output = tf.keras.layers.Dense(1, name="Output")(x)  # output layer
 
 model = tf.keras.Model(inputs=input, outputs=output)
 model.summary()
 tf.keras.utils.plot_model(model, "my_first_model.png")
+
+model.compile(
+    loss=tf.keras.losses.MeanSquaredError(),
+    optimizer=tf.keras.optimizers.RMSprop(),
+    metrics=["accuracy"],
+)
+
+history = model.fit(x_train, y_train, batch_size=1, epochs=5)
+model_out = model.predict(x_train)
+plt.plot(t, x_train)
+plt.plot(t, y_train)
+plt.plot(t, model_out)
 
 
 # %%

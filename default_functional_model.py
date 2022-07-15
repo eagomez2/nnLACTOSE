@@ -45,7 +45,7 @@ output = tf.keras.layers.Dense(1, name="Output")(x)  # output layer
 
 model = tf.keras.Model(inputs=input, outputs=output)
 model.summary()
-tf.keras.utils.plot_model(model, "my_first_model.png")
+tf.keras.utils.plot_model(model, "./images/default_dense.png")
 
 model.compile(
     loss=tf.keras.losses.MeanSquaredError(),

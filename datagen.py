@@ -21,7 +21,7 @@ class DataGenerator:
         # PREPROCESS CONDSARRAY #
         #########################
         ConditionsArray = np.sort(CondsArray)
-        self.Conditions = [
+        Conditions = [
             (ConditionsArray[0] <= x) & (x < ConditionsArray[1]),
             (ConditionsArray[1] <= x) & (x < ConditionsArray[2]),
             (ConditionsArray[2] <= x) & (x < ConditionsArray[3]),
@@ -33,7 +33,7 @@ class DataGenerator:
             lambda x: E * x + F,
             lambda x: G * x + H,
         ]
-        output = np.piecewise(x, self.Conditions, self.FunctionsList)
+        output = np.piecewise(x, Conditions, self.FunctionsList)
         return output
 
     def GenerateData(self):
@@ -42,41 +42,40 @@ class DataGenerator:
         plt.plot(self.t, self.Input)
 
         Conditions = np.random.rand(3) * 2 - 1
-        Conditions = np.append(Conditions, [1, -1])
+        self.Conditions = np.append(Conditions, [1, -1])
+
         Coefficients = np.random.randint(1, 9, size=(8)) - 5
-        print(Coefficients)
+        for c in Coefficients:
+            Chance = np.random.randint(0, 2) - 1
+            if Chance == 1:
+                Chance = 1
+            if c == 0:
+                Coefficients[c] = 1
+        self.Coefficients = Coefficients
+
         Output = self.PiecewiseFunction(
             self.Input,
-            Coefficients,
-            Conditions,
+            self.Coefficients,
+            self.Conditions,
         )
         self.Output = Output / np.max(np.abs(Output))
         plt.plot(self.t, self.Output)
         plt.title("Input and Output Signal")
-        return self.Input, self.Output, self.t
+        return self.Input, self.Output, self.t, self.Conditions, self.Coefficients
 
-    def PlotTransferFunction(self):
+    def GenerateDataAgain(self, Input):
+        NewOutput = self.PiecewiseFunction(
+            Input,
+            self.Coefficients,
+            self.Conditions,
+        )
+        NewOutput = NewOutput / np.max(np.abs(NewOutput))
+        return NewOutput
+
+    def PlotTransferFunction(self, Output):
         plt.figure()
         plt.plot(self.Input, self.Output)
         plt.title("Transfer Function")
         plt.axhline(y=0, color="k")
         plt.axvline(x=0, color="k")
-
-
-MyDataGenerator = DataGenerator(48000, 0.25)
-Input, Output, t = MyDataGenerator.GenerateData()
-MyDataGenerator.PlotTransferFunction()
-
-
-#%%
-#############
-# PLOT DATA #
-#############
-
-plt.figure()
-plt.plot(t, Input)
-plt.plot(t, Output)
-plt.figure()
-plt.plot(Input, Output)
-
-# %%
+        plt.show()

@@ -52,13 +52,20 @@ myModel = ConditionalDenseModel()
     SavedWeights4,
 ) = myModel.GetModel()
 
-myModel.CustomTrainingLoop(10, Dataset, model, loss_fn, optimizer, metric, Conds)
+myModel.CustomTrainingLoop(3, Dataset, model, loss_fn, optimizer, metric, Conds)
 Output, TruePlot = myModel.PlotOutput(model, Dataset)
 
 # %%
 import matplotlib.pyplot as plt
 
 Output = np.array(Output).flatten()
+Output = Output / np.max(np.abs(Output))
 TruePlot = np.array(TruePlot).flatten()
 plt.plot(Output)
 plt.plot(TruePlot)
+
+# %%
+plt.figure()
+plt.plot(Input)
+plt.plot(Output)
+# %%

@@ -145,7 +145,8 @@ class ConditionalDenseModel:
                     f"Network 1 is {Network1loss} Network 2 is {Network2loss} Network 3 is {Network3loss} Network 4 is {Network4loss}"
                 )
 
-                print("Seen so far: %d samples" % ((step)))
+                # print("Seen so far: %d samples" % ((step)))
+                print(f"Epoch: {epoch}")
 
             # Display metrics at the end of each epoch.
             train_acc = metric.result()

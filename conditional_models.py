@@ -212,5 +212,8 @@ class ConditionalDenseModel:
             TruePlot.append(y)
         return Output, TruePlot
 
+    def SaveModelWeights(self, Model, FileName):
+        Model.save_weights("SavedModelWeights/" + FileName + ".h5")
+
 
 # %%

@@ -54,6 +54,7 @@ myModel = ConditionalDenseModel()
 
 myModel.CustomTrainingLoop(50, Dataset, model, loss_fn, optimizer, metric, Conds)
 Output, TruePlot = myModel.PlotOutput(model, Dataset)
+myModel.SaveModelWeights(model, "./Model1/")
 
 # %%
 import matplotlib.pyplot as plt

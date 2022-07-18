@@ -32,9 +32,9 @@ plt.plot(Input, Output)
 
 # %%
 Dataset = []
-for i in range(len(Input)):
-    Dataset.append([Input[i], Output[i]])
-
+for i in range(len(Input) - 1):
+    Dataset.append([Input[i], Input[i + 1], Output[i]])
+# %%
 Conds = [-1, -0.5, 0, 0.5, 1]
 
 from conditional_models import ConditionalDenseModel
@@ -52,7 +52,7 @@ myModel = ConditionalDenseModel()
     SavedWeights4,
 ) = myModel.GetModel()
 
-myModel.CustomTrainingLoop(3, Dataset, model, loss_fn, optimizer, metric, Conds)
+myModel.CustomTrainingLoop(50, Dataset, model, loss_fn, optimizer, metric, Conds)
 Output, TruePlot = myModel.PlotOutput(model, Dataset)
 
 # %%

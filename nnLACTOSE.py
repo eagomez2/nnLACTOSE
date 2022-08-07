@@ -2,6 +2,7 @@
 import tensorflow as tf
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 from time import perf_counter_ns
 import sys
 from IPython.display import Image, display
@@ -62,6 +63,8 @@ class LactoseModel:
                     time_major=False,
                     reset_after=True,
                 )(x)
+            if i == len(self.LayerInfoDict) - 1:
+                self.OutputSize = SizeOfCurrentLayer
 
         output = tf.keras.layers.Flatten()(x)
         self.Model = tf.keras.models.Model(inputs=input, outputs=output)
@@ -81,17 +84,38 @@ class LactoseModel:
         if DisplayPlot:
             display(Image("./nnLactoseModel.png"))
 
-        self.InputSize = list(self.InputSize)
-        newInputSize = list()
-        newInputSize.append(1)
-        for i in range(len(self.InputSize)):
-            newInputSize.append(self.InputSize[i])
+        if type(self.InputSize) is tuple:
+            self.InputSize = list(self.InputSize)
+            newInputSize = list()
+            newInputSize.append(1)
+            for i in range(len(self.InputSize)):
+                newInputSize.append(self.InputSize[i])
+        elif type(self.InputSize) is int:
+            newInputSize = list()
+            newInputSize.append(self.InputSize)
+        else:
+            raise Exception("Input size is not an int or tuple.")
+
         self.InputSize = tuple(newInputSize)
+
+        if type(self.OutputSize) is tuple:
+            self.OutputSize = list(self.OutputSize)
+            newOutputSize = list()
+            newOutputSize.append(1)
+            for i in range(len(self.OutputSize)):
+                newOutputSize.append(self.OutputSize[i])
+        elif type(self.OutputSize) is int:
+            newOutputSize = list()
+            newOutputSize.append(self.OutputSize)
+        else:
+            raise Exception("Output size is not an int or tuple.")
+
+        self.OutputSize = tuple(newOutputSize)
 
         self.LossFunction = tf.keras.losses.MeanAbsolutePercentageError()
         self.Optimizer = tf.keras.optimizers.RMSprop()
         self.Metric = tf.keras.metrics.Accuracy()
-        # tf.print(model(tf.ones(self.InputSize)))
+        self.Model(tf.ones(self.InputSize))
 
         self.ConditionArray = ConditionArray
         self.NumberOfModelsRequired = len(self.ConditionArray) - 1
@@ -109,37 +133,114 @@ class LactoseModel:
                 raise Exception(
                     "ERROR: Input is greater than largest condition. Check conditions or input."
                 )
-            if Input < self.ConditionArray[i]:
+            if Input < self.ConditionArray[0]:
                 raise Exception(
                     "ERROR: Input is less than smallest condition. Check conditions or input.",
                 )
             if i == 0:
                 if Input == self.ConditionArray[i]:
-                    return self.SavedWeightsDict[f"{i}"]
+                    return self.SavedWeightsDict[f"{i}"], i
             else:
                 if self.ConditionArray[i - 1] <= Input < self.ConditionArray[i]:
-                    return self.SavedWeightsDict[f"{i-1}"]
+                    return self.SavedWeightsDict[f"{i-1}"], i
                 if Input == self.ConditionArray[-1]:
-                    return self.SavedWeightsDict[f"{len(self.ConditionArray)}"]
+                    return self.SavedWeightsDict[f"{len(self.ConditionArray)}"], i
+
+    def CheckInputAndSaveModelWeights(self, Input, Weights):
+        for i in range(len(self.ConditionArray)):
+            if self.ConditionArray[-1] < Input:
+                raise Exception(
+                    "ERROR: Input is greater than largest condition. Check conditions or input."
+                )
+            if Input < self.ConditionArray[0]:
+                raise Exception(
+                    "ERROR: Input is less than smallest condition. Check conditions or input.",
+                )
+            if i == 0:
+                if Input == self.ConditionArray[i]:
+                    self.SavedWeightsDict[f"{i}"] = Weights
+            else:
+                if self.ConditionArray[i - 1] <= Input < self.ConditionArray[i]:
+                    self.SavedWeightsDict[f"{i-1}"] = Weights
+                if Input == self.ConditionArray[-1]:
+                    self.SavedWeightsDict[f"{len(self.ConditionArray)}"] = Weights
 
     def Train(self, Dataset, Epochs=1, CheckInputNumber=-1):
+        ModelLosses = dict()
+        for i in range(self.NumberOfModelsRequired):
+            ModelLosses[f"metric_history{i}"] = np.array([])
+            ModelLosses[f"loss_history{i}"] = np.array([])
         for epoch in range(Epochs):
             print(f"Epoch {epoch}")
 
             for step, FeatureAndAnswer in enumerate(Dataset):
-                Input = FeatureAndAnswer[0:-2]
-                Answer = FeatureAndAnswer[-1]
+                print(f"Step {step} of Epoch {epoch}")
 
-                ModelWeights = self.CheckInputAndReturnModel(Input[CheckInputNumber])
+                Input = FeatureAndAnswer[0 : (len(FeatureAndAnswer) - 1)]
+                Answer = FeatureAndAnswer[len(FeatureAndAnswer) - 1]
+                InputCheck = Input[CheckInputNumber]
+                ##########################
+                # RETRIEVE MODEL WEIGHTS #
+                ##########################
+                ModelWeights, ModelNumber = self.CheckInputAndReturnModel(InputCheck)
                 self.Model.set_weights(ModelWeights)
 
                 Input = tf.reshape(Input, self.InputSize)
-                Answer = tf.reshape(Answer, (1,))
+                Answer = tf.reshape(Answer, self.OutputSize)
 
                 with tf.GradientTape() as tape:
                     Prediction = self.Model(Input)
                     Loss = self.LossFunction(Answer, Prediction)
                 grads = tape.gradient(Loss, self.Model.trainable_weights)
                 self.Optimizer.apply_gradients(zip(grads, self.Model.trainable_weights))
+                ######################
+                # SAVE MODEL WEIGHTS #
+                ######################
+                SavedWeight = self.Model.get_weights()
+                self.CheckInputAndSaveModelWeights(InputCheck, SavedWeight)
 
-                # Self.Model.get_weights() ## SAVE THE MODEL WEIGHTS
+                self.Metric.update_state(Answer, Prediction)
+                for i in range(self.NumberOfModelsRequired):
+                    if i == ModelNumber:
+                        ModelLosses[f"{i}"] = Loss.numpy()
+
+                        ModelLosses[f"metric_history{i}"] = np.append(
+                            ModelLosses[f"metric_history{i}"],
+                            self.Metric.result().numpy(),
+                        )
+                        ModelLosses[f"loss_history{i}"] = np.append(
+                            ModelLosses[f"loss_history{i}"], Loss.numpy()
+                        )
+
+                for i in range(self.NumberOfModelsRequired):
+
+                    if i != self.NumberOfModelsRequired - 1:
+                        print(ModelLosses[f"{i}"])
+                    else:
+                        print(ModelLosses[f"{i}"], end="\r", flush=True)
+
+            self.Train_Accuracy = self.Metric.result()
+            self.Metric.reset_states()
+
+    def Predict(self, Input, CheckInputNumber=-1, Plot=False):
+        Output = np.array([])
+        for Features in enumerate(Input):
+            InputToModel = Features
+            InputCheck = InputToModel[CheckInputNumber]
+            ModelWeights, ModelNumber = self.CheckInputAndReturnModel(InputCheck)
+            self.Model.set_weights(ModelWeights)
+            InputToModel = tf.reshape(InputToModel, self.InputSize)
+            Output = np.append(Output, self.Model(InputToModel).numpy())
+        if Plot:
+            plt.plot(Output)
+            plt.show()
+
+    def SaveModelWeights(self, FileName):
+        for i in range(self.NumberOfModelsRequired):
+            Weights = self.SavedWeightsDict[f"{i}"]
+            self.Model.set_weights(Weights)
+            Config = self.Model.to_json(f"{FileName}_{i}.json")
+            # CHECK IF WORKS?
+
+
+# %%

@@ -1,5 +1,5 @@
 # nnLACTOSE
-Neural Networks based on the Loop-and-branch Admissable Conditional TOpologies with Separated Error-backpropagation (LACTOSE) Algorithm
+Neural Networks based on the Linear Array of Conditions for Topologies with Separated Error-backpropagation (LACTOSE) Algorithm
 ## Description
 This algorithm presents a method to side-step the potential difficulties with providing symbolic inputs to conditional branches in the [Tensorflow](https://www.tensorflow.org/)(TF) graph. The algorithm works with implementing the condition outside of the TF graph so that the smoothness of the model architecture is not affected. This is demonstrated by the image below.    
 

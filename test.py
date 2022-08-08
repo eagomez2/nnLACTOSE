@@ -17,6 +17,26 @@ Output = truth_df.to_numpy()
 Input = Input / np.max(np.abs(Input))
 Output = Output / np.max(np.abs(Output))
 
+#%%
+from scipy import signal
+
+Coeff_B, Coeff_A = signal.butter(8, 15, "low", fs=44100 / 128)
+Input_Filtered = signal.filtfilt(Coeff_B, Coeff_A, Input.flatten(), padlen=0)
+Input_Filtered = Input_Filtered / np.max(np.abs(Input_Filtered))
+
+plt.figure(1)
+# plt.plot(Input)
+plt.plot(Input_Filtered)
+plt.plot(Output)
+plt.figure(2)
+
+from scipy import rfft, rfftfreq
+
+# def FFT(Input)
+
+# plt.plot(Output)
+#%%
+
 
 def CreateMemoryDataset(Input, Output, MemorySize):
     Dataset = np.array([])

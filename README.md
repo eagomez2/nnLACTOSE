@@ -3,7 +3,7 @@ Neural Networks based on the Linear Array of Conditions for Topologies with Sepa
 ## Description
 This algorithm presents a method to side-step the potential difficulties with providing symbolic inputs to conditional branches in the [Tensorflow](https://www.tensorflow.org/)(TF) graph. The algorithm works with implementing the condition outside of the TF graph so that the smoothness of the model architecture is not affected. This is demonstrated by the image below.    
 
-![Model.png](/imgs/Model.png "San Juan Mountains")
+![Model.png](/imgs/model.png "San Juan Mountains")
 
 In this diagram, the model may contain any (differentiable) layer. As the conditions are calculated at run time, the TF graph is "compiled" normally. 
 

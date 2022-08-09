@@ -90,7 +90,7 @@ LayerInfoDict = {
 ConditionArray = [-1, -0.6, -0.2, 0.2, 0.5, 0.8, 1.0]
 Model = nnLACTOSE.LactoseModel(LayerInfoDict, ConditionArray, DisplayPlot=False)
 
-Model.Train(Dataset=Dataset, Epochs=200)
+Model.Train(Dataset=Dataset, Epochs=1000)
 
 Model.SaveModelWeights("./Model1/WeightOfModel")
 

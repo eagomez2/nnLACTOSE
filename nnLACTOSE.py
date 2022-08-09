@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from time import perf_counter_ns
 import sys
 from IPython.display import Image, display
-from pprint import pprint
+import pickle as pkl
 
 # %%
 class LactoseModel:
@@ -35,7 +35,7 @@ class LactoseModel:
             if CurrentLayerType == "dense":
                 x = tf.keras.layers.Dense(
                     SizeOfCurrentLayer,
-                    activation="relu",
+                    activation="gelu",
                     kernel_initializer=tf.keras.initializers.RandomNormal(),
                 )(x)
             if CurrentLayerType == "gru":
@@ -59,10 +59,10 @@ class LactoseModel:
                     return_sequences=True,
                     return_state=False,
                     go_backwards=False,
-                    stateful=False,
+                    stateful=True,
                     unroll=False,
                     time_major=False,
-                    reset_after=True,
+                    reset_after=False,
                 )(x)
             if i == len(self.LayerInfoDict) - 1:
                 self.OutputSize = SizeOfCurrentLayer
@@ -145,7 +145,7 @@ class LactoseModel:
                 if self.ConditionArray[i - 1] <= Input < self.ConditionArray[i]:
                     return self.SavedWeightsDict[f"{i-1}"], i
                 if Input == self.ConditionArray[-1]:
-                    return self.SavedWeightsDict[f"{len(self.ConditionArray)}"], i
+                    return self.SavedWeightsDict[f"{len(self.ConditionArray)-2}"], i
 
     def CheckInputAndSaveModelWeights(self, Input, Weights):
         for i in range(len(self.ConditionArray)):
@@ -166,9 +166,9 @@ class LactoseModel:
                 if Input == self.ConditionArray[-1]:
                     self.SavedWeightsDict[f"{len(self.ConditionArray)}"] = Weights
 
-    def Predict(self, Input, CheckInputNumber=-1):
+    def Predict(self, Dataset, CheckInputNumber=-1):
         Output = np.array([])
-        for step, Features in enumerate(Input):
+        for step, Features in enumerate(Dataset):
             InputToModel = Features
             InputCheck = InputToModel[CheckInputNumber]
             ModelWeights, ModelNumber = self.CheckInputAndReturnModel(InputCheck)
@@ -178,18 +178,20 @@ class LactoseModel:
         return Output
 
     def Train(self, Dataset, Epochs=1, CheckInputNumber=-1):
-        ModelLosses = dict()
-        ModelLosses["loss"] = dict()
+        self.ModelLosses = dict()
+        self.ModelLosses["loss"] = dict()
         DatasetInput = Dataset[:, :-1]
         DatasetOutput = Dataset[:, -1]
         for i in range(self.NumberOfModelsRequired):
-            ModelLosses[f"metric_history{i}"] = np.array([])
-            ModelLosses[f"loss_history{i}"] = np.array([])
+            self.ModelLosses[f"metric_history{i}"] = np.array([])
+            self.ModelLosses[f"loss_history{i}"] = np.array([])
         for epoch in range(Epochs):
             print(f"Epoch {epoch}")
 
             for step, FeatureAndAnswer in enumerate(Dataset):
-                print(f"Step {step} of Epoch {epoch}", end="\r", flush=True)
+                print(
+                    f"Step {step}/{len(Dataset)} of Epoch {epoch}", end="\r", flush=True
+                )
 
                 Input = FeatureAndAnswer[0 : (len(FeatureAndAnswer) - 1)]
                 Answer = FeatureAndAnswer[len(FeatureAndAnswer) - 1]
@@ -217,39 +219,43 @@ class LactoseModel:
                 self.Metric.update_state(Answer, Prediction)
                 for i in range(self.NumberOfModelsRequired):
                     if i == ModelNumber:
-                        ModelLosses["loss"][f"Model No.{i}"] = Loss.numpy()
+                        self.ModelLosses["loss"][f"Model No.{i}"] = Loss.numpy()
 
-                        ModelLosses[f"metric_history{i}"] = np.append(
-                            ModelLosses[f"metric_history{i}"],
+                        self.ModelLosses[f"metric_history{i}"] = np.append(
+                            self.ModelLosses[f"metric_history{i}"],
                             self.Metric.result().numpy(),
                         )
-                        ModelLosses[f"loss_history{i}"] = np.append(
-                            ModelLosses[f"loss_history{i}"], Loss.numpy()
+                        self.ModelLosses[f"loss_history{i}"] = np.append(
+                            self.ModelLosses[f"loss_history{i}"], Loss.numpy()
                         )
-                PrintLoss = ModelLosses["loss"]
+                PrintLoss = self.ModelLosses["loss"]
 
                 if step % (len(DatasetOutput) - 1) == 0 and step != 0:
                     print(
                         f"Step {step} of Epoch {epoch} - Loss: {PrintLoss} - Metric: {self.Metric.result().numpy()}"
                     )
-                    self.Metric.reset_states()
+                    # self.Metric.reset_states()
                     ModelPrediction = self.Predict(
                         DatasetInput, CheckInputNumber=CheckInputNumber
                     )
                     plt.plot(ModelPrediction)
                     plt.plot(DatasetOutput)
-                    plt.savefig(f"{epoch}.png")
+                    plt.savefig(f"imgs/NewModelPlots/{epoch}.png")
                     plt.close()
 
             self.Train_Accuracy = self.Metric.result()
             # self.Metric.reset_states()
 
     def SaveModelWeights(self, FileName):
-        for i in range(self.NumberOfModelsRequired):
+        for i in range(self.NumberOfModelsRequired - 1):
             Weights = self.SavedWeightsDict[f"{i}"]
             self.Model.set_weights(Weights)
-            Config = self.Model.to_json(f"{FileName}_{i}.json")
+            self.Model.save(f"{FileName}_{i}.json")
             # CHECK IF WORKS?
+
+    def ExportLossDictionary(self, FileName):
+        OutputFile = open(f"{FileName}.pkl", "wb")
+        pkl.dump(self.ModelLosses, OutputFile)
 
 
 # %%

@@ -9,6 +9,7 @@ from scipy import signal
 
 GLOBAL_FS = 44100 / 256
 Coeff_B, Coeff_A = signal.butter(8, 9, "low", fs=GLOBAL_FS)
+plt.figure(figsize=(10, 10), dpi=300, facecolor="w")
 
 
 def CreateMemoryDataset(Input, Output, MemorySize, WithOutput=True):
@@ -68,6 +69,9 @@ for Name in range(len(NameArray)):
         if i == 0 and Name == 0:
             plt.plot(InputTemp_Filtered)
             plt.plot(OutputTemp)
+            plt.xlabel("Time")
+            plt.ylabel("Normalised Arbitrary Units")
+            plt.legend(["Input (Audio)", "Output (ECG)"])
             Dataset = DatasetTemp
         else:
             Dataset = np.concatenate((Dataset, DatasetTemp), axis=0)
@@ -90,11 +94,11 @@ LayerInfoDict = {
 ConditionArray = [-1, -0.6, -0.2, 0.2, 0.5, 0.8, 1.0]
 Model = nnLACTOSE.LactoseModel(LayerInfoDict, ConditionArray, DisplayPlot=False)
 
-Model.Train(Dataset=Dataset, Epochs=1000)
+Model.Train(Dataset=Dataset, Epochs=1)
 
-Model.SaveModelWeights("./Model1/WeightOfModel")
+Model.SaveModelWeights("./Model2/WeightOfModel")
 
-Model.ExportLossDictionary("./Model1/LossDictionary")
+Model.ExportLossDictionary("./Model2/LossDictionary")
 
 # %%
 # TestInput = CreateMemoryDataset(
@@ -110,19 +114,18 @@ NumberOfPlots = 0
 plt.rcParams["figure.figsize"] = (9, 9)
 for i in range(len(ConditionArray) - 1):
     PlotArray = LossDictionary[f"loss_history{i}"]
-    if len(PlotArray) != 0:
+    if len(PlotArray) > 5:
         NumberOfPlots += 1
+        print(len(PlotArray))
 fig, ax = plt.subplots(NumberOfPlots)
 PlotInNumber = 0
 for i in range(len(ConditionArray) - 1):
     PlotArray = LossDictionary[f"loss_history{i}"]
-    if len(PlotArray) != 0:
+    if len(PlotArray) > 5:
         ax[PlotInNumber].plot(PlotArray)
+        ax[PlotInNumber].set(xlabel="Network Training Epochs", ylabel="Loss")
+        ax[PlotInNumber].set_title(f"Network of Condition {i}")
         PlotInNumber += 1
+plt.subplots_adjust(wspace=1, hspace=1)
 
-# %%
-plt.figure(2)
-# plt.plot(Output)
-
-
-# %%
+#%%

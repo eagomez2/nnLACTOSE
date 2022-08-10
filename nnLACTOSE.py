@@ -238,9 +238,12 @@ class LactoseModel:
                     ModelPrediction = self.Predict(
                         DatasetInput, CheckInputNumber=CheckInputNumber
                     )
-                    plt.plot(ModelPrediction)
                     plt.plot(DatasetOutput)
-                    plt.savefig(f"imgs/NewModelPlots/{epoch}.png")
+                    plt.plot(ModelPrediction, "-")
+                    plt.legend(["True", "Predicted"])
+                    plt.xlabel("Time")
+                    plt.ylabel("Normalised Arbitrary Units")
+                    plt.savefig(f"imgs/NewModelPlots/{epoch}.png", dpi=300)
                     plt.close()
 
             self.Train_Accuracy = self.Metric.result()

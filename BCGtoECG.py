@@ -1,3 +1,4 @@
+# %%
 import sys
 
 sys.path.insert(0, "./Data")
@@ -8,6 +9,7 @@ from scipy import signal
 
 GLOBAL_FS = 44100 / 256
 Coeff_B, Coeff_A = signal.butter(8, 9, "low", fs=GLOBAL_FS)
+plt.figure(figsize=(10, 10), dpi=300, facecolor="w")
 
 
 def CreateMemoryDataset(Input, Output, MemorySize, WithOutput=True):
@@ -45,12 +47,12 @@ for Name in range(len(NameArray)):
     for i in range(4):
         InputPath = f"./Data/001_{NameArray[Name]}{i+1}_bcg.csv"
         Input_df = pd.read_csv(InputPath)
-        InputTemp = Input_df.to_numpy() - 1
+        InputTemp = Input_df.to_numpy() - 2
         InputTemp_Filtered = signal.filtfilt(
             Coeff_B, Coeff_A, InputTemp.flatten(), padlen=0
         )
         InputTemp_Filtered = InputTemp_Filtered[10:-1]
-        InputTemp_Filtered = InputTemp_Filtered / np.max(np.abs(InputTemp_Filtered))
+        InputTemp_Filtered = InputTemp_Filtered / np.max(np.abs(InputTemp_Filtered)) + 1
 
         OutputPath = f"./Data/001_{NameArray[Name]}{i+1}_ecg.csv"
         Output_df = pd.read_csv(OutputPath)
@@ -67,6 +69,9 @@ for Name in range(len(NameArray)):
         if i == 0 and Name == 0:
             plt.plot(InputTemp_Filtered)
             plt.plot(OutputTemp)
+            plt.xlabel("Time")
+            plt.ylabel("Normalised Arbitrary Units")
+            plt.legend(["Input (BCG)", "Output (ECG)"])
             Dataset = DatasetTemp
         else:
             Dataset = np.concatenate((Dataset, DatasetTemp), axis=0)
@@ -89,8 +94,36 @@ LayerInfoDict = {
 ConditionArray = [-1, -0.6, -0.2, 0.2, 0.5, 0.8, 1.0]
 Model = nnLACTOSE.LactoseModel(LayerInfoDict, ConditionArray, DisplayPlot=False)
 
-Model.Train(Dataset=Dataset, Epochs=200)
+Model.Train(Dataset=Dataset, Epochs=1)
 
-Model.SaveModelWeights("./Model1/WeightOfModel")
+Model.SaveModelWeights("./Model2/WeightOfModel")
 
-Model.ExportLossDictionary("./Model1/LossDictionary")
+Model.ExportLossDictionary("./Model2/LossDictionary")
+
+# %%
+# TestInput = CreateMemoryDataset(
+#     Input_Filtered, Output, MemorySize=400, WithOutput=False
+# )
+# Output = Model.Predict(TestInput)
+
+LossDictionary = Model.ModelLosses
+#%%
+
+plt.close()
+NumberOfPlots = 0
+plt.rcParams["figure.figsize"] = (9, 9)
+for i in range(len(ConditionArray) - 1):
+    PlotArray = LossDictionary[f"loss_history{i}"]
+    if len(PlotArray) > 5:
+        NumberOfPlots += 1
+        print(len(PlotArray))
+fig, ax = plt.subplots(NumberOfPlots)
+PlotInNumber = 0
+for i in range(len(ConditionArray) - 1):
+    PlotArray = LossDictionary[f"loss_history{i}"]
+    if len(PlotArray) > 5:
+        ax[PlotInNumber].plot(PlotArray)
+        ax[PlotInNumber].set(xlabel="Network Training Epochs", ylabel="Loss")
+        ax[PlotInNumber].set_title(f"Network of Condition {i}")
+        PlotInNumber += 1
+plt.subplots_adjust(wspace=1, hspace=1)

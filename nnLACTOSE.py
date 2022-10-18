@@ -3,14 +3,22 @@ import tensorflow as tf
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from time import perf_counter_ns
+from time import perf_counter_ns, time
 import sys
+import os
 from IPython.display import Image, display
 import pickle as pkl
 
 # %%
 class LactoseModel:
-    def __init__(self, LayerInfoDict, ConditionArray, DisplayPlot=True):
+    def __init__(
+        self,
+        LayerInfoDict,
+        ConditionArray,
+        GoodModelDirectory,
+        DisplayPlot=True,
+        UseGoodModel=False,
+    ):
         StartTime = perf_counter_ns()
         self.LayerInfoDict = LayerInfoDict
         ###############################################
@@ -39,6 +47,7 @@ class LactoseModel:
                     kernel_initializer=tf.keras.initializers.RandomNormal(),
                 )(x)
             if CurrentLayerType == "gru":
+                # x = tf.keras.layers.Reshape((1, SizeOfCurrentLayer))(x)
                 x = GRULayer = tf.keras.layers.GRU(
                     SizeOfCurrentLayer,
                     activation="tanh",
@@ -67,7 +76,12 @@ class LactoseModel:
             if i == len(self.LayerInfoDict) - 1:
                 self.OutputSize = SizeOfCurrentLayer
 
-        output = tf.keras.layers.Flatten()(x)
+        x = tf.keras.layers.Flatten()(x)
+        output = tf.keras.layers.Dense(
+            self.OutputSize,
+            activation="gelu",
+            kernel_initializer=tf.keras.initializers.RandomNormal(),
+        )(x)
         self.Model = tf.keras.models.Model(inputs=input, outputs=output)
         self.Model.summary()
         ModelPlot = tf.keras.utils.plot_model(
@@ -120,10 +134,22 @@ class LactoseModel:
 
         self.ConditionArray = ConditionArray
         self.NumberOfModelsRequired = len(self.ConditionArray) - 1
+        print(
+            f"Becuase there are {len(self.ConditionArray)} conditions, {self.NumberOfModelsRequired} models are required."
+        )
 
         self.SavedWeightsDict = dict()
         for i in range(self.NumberOfModelsRequired):
             self.SavedWeightsDict[f"{i}"] = self.Model.get_weights()
+            print(f"Model {i} has been created.")
+
+        if UseGoodModel:
+            for i in range(self.NumberOfModelsRequired):
+                if os.path.exists(f"{GoodModelDirectory}/WeightOfModel_{i}"):
+                    self.Model = tf.saved_model.load(
+                        f"{GoodModelDirectory}/WeightOfModel_{i}"
+                    )
+                    self.SavedWeightsDict[f"{i}"] = self.Model.get_weights()
 
         StopTime = perf_counter_ns()
         print(f"Time to create model: {(StopTime - StartTime) / 1000000000} seconds")
@@ -144,8 +170,8 @@ class LactoseModel:
             else:
                 if self.ConditionArray[i - 1] <= Input < self.ConditionArray[i]:
                     return self.SavedWeightsDict[f"{i-1}"], i
-                if Input == self.ConditionArray[-1]:
-                    return self.SavedWeightsDict[f"{len(self.ConditionArray)-2}"], i
+            if Input == self.ConditionArray[-1]:
+                return self.SavedWeightsDict[f"{self.NumberOfModelsRequired-1}"], i
 
     def CheckInputAndSaveModelWeights(self, Input, Weights):
         for i in range(len(self.ConditionArray)):
@@ -164,7 +190,7 @@ class LactoseModel:
                 if self.ConditionArray[i - 1] <= Input < self.ConditionArray[i]:
                     self.SavedWeightsDict[f"{i-1}"] = Weights
                 if Input == self.ConditionArray[-1]:
-                    self.SavedWeightsDict[f"{len(self.ConditionArray)}"] = Weights
+                    self.SavedWeightsDict[f"{len(self.ConditionArray)-2}"] = Weights
 
     def Predict(self, Dataset, CheckInputNumber=-1):
         Output = np.array([])
@@ -177,9 +203,21 @@ class LactoseModel:
             Output = np.append(Output, self.Model(InputToModel).numpy())
         return Output
 
-    def Train(self, Dataset, Epochs=1, CheckInputNumber=-1):
+    def Train(self, Dataset, ModelName, Epochs=1, CheckInputNumber=-1):
+        DirectoryName = f"imgs/Model{ModelName}"
+        CheckDirectoryName = os.path.isdir(DirectoryName)
+
+        if not CheckDirectoryName:
+            os.makedirs(DirectoryName)
+            print(
+                f"Successfully created directory {DirectoryName} for model {ModelName}."
+            )
+        else:
+            print("Did not create folder as it already exists.")
+
         self.ModelLosses = dict()
         self.ModelLosses["loss"] = dict()
+        self.ModelLosses["summedloss"] = dict()
         DatasetInput = Dataset[:, :-1]
         DatasetOutput = Dataset[:, -1]
         for i in range(self.NumberOfModelsRequired):
@@ -190,7 +228,8 @@ class LactoseModel:
 
             for step, FeatureAndAnswer in enumerate(Dataset):
                 print(
-                    f"Step {step}/{len(Dataset)} of Epoch {epoch}", end="\r", flush=True
+                    f"Step {step}/{len(Dataset)} of Epoch {epoch}/{Epochs}",
+                    end="\r",
                 )
 
                 Input = FeatureAndAnswer[0 : (len(FeatureAndAnswer) - 1)]
@@ -230,7 +269,11 @@ class LactoseModel:
                         )
                 PrintLoss = self.ModelLosses["loss"]
 
-                if step % (len(DatasetOutput) - 1) == 0 and step != 0:
+                if (
+                    epoch % 10 == 0
+                    and step % (len(DatasetOutput) - 1) == 0
+                    and step != 0
+                ):
                     print(
                         f"Step {step} of Epoch {epoch} - Loss: {PrintLoss} - Metric: {self.Metric.result().numpy()}"
                     )
@@ -238,12 +281,17 @@ class LactoseModel:
                     ModelPrediction = self.Predict(
                         DatasetInput, CheckInputNumber=CheckInputNumber
                     )
+                    SummedLoss = np.sum(np.absolute(DatasetOutput - ModelPrediction))
+                    self.ModelLosses["summedloss"][f"epoch{epoch}"] = SummedLoss
+                    plt.figure(figsize=(10, 5), dpi=300, facecolor="w")
                     plt.plot(DatasetOutput)
-                    plt.plot(ModelPrediction, "-")
+                    plt.plot(ModelPrediction, "--")
                     plt.legend(["True", "Predicted"])
                     plt.xlabel("Time")
                     plt.ylabel("Normalised Arbitrary Units")
-                    plt.savefig(f"imgs/NewModelPlots/{epoch}.png", dpi=300)
+                    plt.savefig(
+                        f"imgs/Model{ModelName}/ModelAtEpoch{epoch}.png", dpi=300
+                    )
                     plt.close()
 
             self.Train_Accuracy = self.Metric.result()
@@ -253,7 +301,7 @@ class LactoseModel:
         for i in range(self.NumberOfModelsRequired - 1):
             Weights = self.SavedWeightsDict[f"{i}"]
             self.Model.set_weights(Weights)
-            self.Model.save(f"{FileName}_{i}.json")
+            self.Model.save(f"{FileName}_{i}")
             # CHECK IF WORKS?
 
     def ExportLossDictionary(self, FileName):

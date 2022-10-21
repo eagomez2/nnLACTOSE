@@ -73,6 +73,52 @@ class LactoseModel:
                     time_major=False,
                     reset_after=False,
                 )(x)
+            if CurrentLayerType == "lstm":
+                x = LSTMLayer = tf.keras.layers.LSTM(
+                    SizeOfCurrentLayer,
+                    activation="tanh",
+                    recurrent_activation="sigmoid",
+                    use_bias=True,
+                    kernel_initializer="glorot_uniform",
+                    recurrent_initializer="orthogonal",
+                    bias_initializer="zeros",
+                    unit_forget_bias=True,
+                    kernel_regularizer=None,
+                    recurrent_regularizer=None,
+                    bias_regularizer=None,
+                    activity_regularizer=None,
+                    kernel_constraint=None,
+                    recurrent_constraint=None,
+                    bias_constraint=None,
+                    dropout=0.0,
+                    recurrent_dropout=0.0,
+                    implementation=2,
+                    return_sequences=True,
+                    return_state=False,
+                    go_backwards=False,
+                    stateful=True,
+                    time_major=False,
+                    unroll=False,
+                )(x)
+
+            if CurrentLayerType == "cnn":
+                x = CNNLayer = tf.keras.layers.Conv1D(
+                    SizeOfCurrentLayer,
+                    SizeOfCurrentLayer * 2,
+                    strides=1,
+                    padding="valid",
+                    data_format="channels_last",
+                    dilation_rate=1,
+                    activation="gelu",
+                    use_bias=True,
+                    kernel_initializer="glorot_uniform",
+                    bias_initializer="zeros",
+                    kernel_regularizer=None,
+                    bias_regularizer=None,
+                    activity_regularizer=None,
+                    kernel_constraint=None,
+                    bias_constraint=None,
+                )(x)
             if i == len(self.LayerInfoDict) - 1:
                 self.OutputSize = SizeOfCurrentLayer
 

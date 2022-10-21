@@ -108,13 +108,14 @@ LayerInfoDict = {
         "size": (80, 1),
         "type": "input",
     },
-    "1": {"size": 200, "type": "dense"},
-    "2": {"size": 200, "type": "gru"},
-    "3": {"size": 200, "type": "dense"},
-    "4": {"size": 200, "type": "dense"},
-    "5": {"size": 200, "type": "dense"},
-    "6": {"size": 200, "type": "dense"},
-    "7": {"size": (1), "type": "dense"},
+    "1": {"size": 8, "type": "dense"},
+    "2": {"size": 8, "type": "dense"},
+    "3": {"size": 8, "type": "cnn"},
+    "4": {"size": 8, "type": "lstm"},
+    "5": {"size": 8, "type": "dense"},
+    "6": {"size": 8, "type": "dense"},
+    "7": {"size": 8, "type": "dense"},
+    "8": {"size": (1), "type": "dense"},
 }
 ConditionArray = [-1, -0.6, -0.25, 0.25, 0.6, 1.0]
 Model = nnLACTOSE.LactoseModel(
@@ -126,7 +127,7 @@ Model = nnLACTOSE.LactoseModel(
 )
 ModelName = str(time())
 
-Model.Train(Dataset=TrainDataset, ModelName=ModelName, Epochs=151)
+Model.Train(Dataset=TrainDataset, ModelName=ModelName, Epochs=1000)
 
 Model.SaveModelWeights(f"./Model{ModelName}/WeightOfModel")
 

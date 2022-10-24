@@ -103,8 +103,8 @@ class LactoseModel:
 
             if CurrentLayerType == "cnn":
                 x = CNNLayer = tf.keras.layers.Conv1D(
-                    SizeOfCurrentLayer,
-                    SizeOfCurrentLayer * 2,
+                    20,
+                    4,
                     strides=1,
                     padding="valid",
                     data_format="channels_last",
@@ -181,7 +181,7 @@ class LactoseModel:
         self.ConditionArray = ConditionArray
         self.NumberOfModelsRequired = len(self.ConditionArray) - 1
         print(
-            f"Becuase there are {len(self.ConditionArray)} conditions, {self.NumberOfModelsRequired} models are required."
+            f"Because there are {len(self.ConditionArray)} conditions, {self.NumberOfModelsRequired} models are required."
         )
 
         self.SavedWeightsDict = dict()
